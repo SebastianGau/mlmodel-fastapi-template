@@ -1,0 +1,40 @@
+trigger:
+- master
+# - dev
+
+resources:
+- repo: self
+
+variables:
+  imageRepository: 'mlapi'
+  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
+  
+  ${{ if ne(variables['Build.SourceBranchName'], 'master') }}:      
+    buildTag: '$(Build.BuildNumber)-beta'
+    latestTag: 'latest-beta'
+  ${{ if eq(variables['Build.SourceBranchName'], 'master') }}:
+    buildTag: '$(Build.BuildNumber)'
+    latestTag: 'latest'
+
+  # Agent VM image name
+  vmImageName: 'ubuntu-latest'
+
+stages:
+- stage: Build
+  displayName: Build and push stage
+  jobs:  
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: Docker@2
+      displayName: Build and push an image to Azure Container Registry
+      inputs:
+        containerRegistry: 'AzureContainerRegistry BASF'
+        repository: $(imageRepository)
+        command: 'buildAndPush'
+        Dockerfile: $(dockerfilePath)
+        tags: |
+          $(buildTag)
+          $(latestTag)
